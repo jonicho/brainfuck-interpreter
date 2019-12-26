@@ -119,12 +119,53 @@ void run_instruction(Instruction *instruction)
 	}
 }
 
+void remove_nops_ins(Instruction *instruction)
+{
+	if (instruction == NULL) {
+		return;
+	}
+	while (instruction->next_instruction != NULL &&
+	       instruction->next_instruction->type == Nop) {
+		Instruction *tmp = instruction->next_instruction;
+		instruction->next_instruction =
+			instruction->next_instruction->next_instruction;
+		free(tmp);
+	}
+	if (instruction->type == Loop) {
+		while (instruction->loop_instruction != NULL &&
+		       instruction->loop_instruction->type == Nop) {
+			Instruction *tmp = instruction->loop_instruction;
+			instruction->loop_instruction =
+				instruction->loop_instruction->next_instruction;
+			free(tmp);
+		}
+		remove_nops_ins(instruction->loop_instruction);
+	}
+	remove_nops_ins(instruction->next_instruction);
+}
+
+void remove_nops()
+{
+	while (program->type == Nop && program->next_instruction != NULL) {
+		Instruction *tmp = program;
+		program = program->next_instruction;
+		free(tmp);
+	}
+	remove_nops_ins(program);
+}
+
+void optimize()
+{
+	remove_nops();
+}
+
 void run_program()
 {
 	program = parse_program();
 	for (int i = 0; i < sizeof data; i++) {
 		data[i] = 0;
 	}
+	optimize();
 	run_instruction(program);
 }
 
