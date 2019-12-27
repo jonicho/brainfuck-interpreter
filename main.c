@@ -186,16 +186,6 @@ void optimize()
 	program = optimize_clear_loops(program);
 }
 
-void run_program()
-{
-	program = parse_program();
-	for (int i = 0; i < sizeof data; i++) {
-		data[i] = 0;
-	}
-	optimize();
-	run_instruction(program);
-}
-
 void main(int argc, char const *argv[])
 {
 	if (argc < 2) {
@@ -208,6 +198,11 @@ void main(int argc, char const *argv[])
 		printf("Failed to open file!\n");
 		exit(EXIT_FAILURE);
 	}
-
-	run_program(); /* condition */
+	program = parse_program();
+	fclose(program_file);
+	for (int i = 0; i < sizeof data; i++) {
+		data[i] = 0;
+	}
+	optimize();
+	run_instruction(program);
 }
