@@ -5,7 +5,17 @@ char data[2048];
 int data_ptr = 0;
 FILE *program_file;
 
-enum InstructionType { Nop, Left, Right, Add, Subtract, Print, Read, Loop };
+enum InstructionType {
+	Nop,
+	Left,
+	Right,
+	Add,
+	Subtract,
+	Print,
+	Read,
+	Loop,
+	Clear
+};
 
 typedef struct Instruction {
 	enum InstructionType type;
@@ -112,6 +122,9 @@ void run_instruction(Instruction *instruction)
 				run_instruction(instruction->loop);
 			}
 			break;
+		case Clear:
+			data[data_ptr] = 0;
+			break;
 		default:
 			break;
 		}
@@ -138,9 +151,29 @@ Instruction *remove_nops(Instruction *instruction)
 	}
 }
 
+Instruction *optimize_clear_loops(Instruction *instruction)
+{
+	if (instruction == NULL) {
+		return NULL;
+	}
+	if (instruction->type == Loop && instruction->loop != NULL &&
+	    (instruction->loop->type == Add ||
+	     instruction->loop->type == Subtract) &&
+	    instruction->loop->next == NULL) {
+		instruction->type = Clear;
+		free(instruction->loop);
+	}
+	instruction->next = optimize_clear_loops(instruction->next);
+	if (instruction->type == Loop) {
+		instruction->loop = optimize_clear_loops(instruction->loop);
+	}
+	return instruction;
+}
+
 void optimize()
 {
 	program = remove_nops(program);
+	program = optimize_clear_loops(program);
 }
 
 void run_program()
@@ -166,5 +199,5 @@ void main(int argc, char const *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	run_program();
+	run_program(); /* condition */
 }
