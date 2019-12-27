@@ -10,26 +10,26 @@ enum InstructionType { Nop, Left, Right, Add, Subtract, Print, Read, Loop };
 typedef struct Instruction {
 	enum InstructionType type;
 	int value;
-	struct Instruction *next_instruction;
-	struct Instruction *loop_instruction;
+	struct Instruction *next;
+	struct Instruction *loop;
 } Instruction;
 
 Instruction *program;
 
 Instruction *parse_program()
 {
-	Instruction *first_instruction = malloc(sizeof(Instruction));
-	first_instruction->type = Nop;
-	Instruction *current_instruction = first_instruction;
+	Instruction *first_inst = malloc(sizeof(Instruction));
+	first_inst->type = Nop;
+	Instruction *current_inst = first_inst;
 	int value;
 	char c;
 	while (!feof(program_file)) {
 		c = fgetc(program_file);
 		if (c == ']') {
-			current_instruction->next_instruction = NULL;
-			return first_instruction;
+			current_inst->next = NULL;
+			return first_inst;
 		}
-		Instruction *next_instruction = malloc(sizeof(Instruction));
+		Instruction *next_inst = malloc(sizeof(Instruction));
 		value = 1;
 		switch (c) {
 		case '<':
@@ -37,50 +37,50 @@ Instruction *parse_program()
 				value++;
 			}
 			fseek(program_file, -1L, SEEK_CUR);
-			next_instruction->type = Left;
-			next_instruction->value = value;
+			next_inst->type = Left;
+			next_inst->value = value;
 			break;
 		case '>':
 			while (fgetc(program_file) == '>') {
 				value++;
 			}
 			fseek(program_file, -1L, SEEK_CUR);
-			next_instruction->type = Right;
-			next_instruction->value = value;
+			next_inst->type = Right;
+			next_inst->value = value;
 			break;
 		case '+':
 			while (fgetc(program_file) == '+') {
 				value++;
 			}
 			fseek(program_file, -1L, SEEK_CUR);
-			next_instruction->type = Add;
-			next_instruction->value = value;
+			next_inst->type = Add;
+			next_inst->value = value;
 			break;
 		case '-':
 			while (fgetc(program_file) == '-') {
 				value++;
 			}
 			fseek(program_file, -1L, SEEK_CUR);
-			next_instruction->type = Subtract;
-			next_instruction->value = value;
+			next_inst->type = Subtract;
+			next_inst->value = value;
 			break;
 		case '.':
-			next_instruction->type = Print;
+			next_inst->type = Print;
 			break;
 		case ',':
-			next_instruction->type = Read;
+			next_inst->type = Read;
 			break;
 		case '[':
-			next_instruction->type = Loop;
-			next_instruction->loop_instruction = parse_program();
+			next_inst->type = Loop;
+			next_inst->loop = parse_program();
 			break;
 		default:
 			break;
 		}
-		current_instruction->next_instruction = next_instruction;
-		current_instruction = next_instruction;
+		current_inst->next = next_inst;
+		current_inst = next_inst;
 	}
-	return first_instruction;
+	return first_inst;
 }
 
 void run_instruction(Instruction *instruction)
@@ -109,13 +109,13 @@ void run_instruction(Instruction *instruction)
 			break;
 		case Loop:
 			while (data[data_ptr]) {
-				run_instruction(instruction->loop_instruction);
+				run_instruction(instruction->loop);
 			}
 			break;
 		default:
 			break;
 		}
-		instruction = instruction->next_instruction;
+		instruction = instruction->next;
 	}
 }
 
@@ -126,16 +126,14 @@ Instruction *remove_nops(Instruction *instruction)
 	}
 	switch (instruction->type) {
 	case Nop: {
-		Instruction *tmp = instruction->next_instruction;
+		Instruction *tmp = instruction->next;
 		free(instruction);
 		return remove_nops(tmp);
 	}
 	case Loop:
-		instruction->loop_instruction =
-			remove_nops(instruction->loop_instruction);
+		instruction->loop = remove_nops(instruction->loop);
 	default:
-		instruction->next_instruction =
-			remove_nops(instruction->next_instruction);
+		instruction->next = remove_nops(instruction->next);
 		return instruction;
 	}
 }
