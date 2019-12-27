@@ -119,44 +119,30 @@ void run_instruction(Instruction *instruction)
 	}
 }
 
-void remove_nops_ins(Instruction *instruction)
+Instruction *remove_nops(Instruction *instruction)
 {
 	if (instruction == NULL) {
-		return;
+		return NULL;
 	}
-	while (instruction->next_instruction != NULL &&
-	       instruction->next_instruction->type == Nop) {
+	switch (instruction->type) {
+	case Nop: {
 		Instruction *tmp = instruction->next_instruction;
+		free(instruction);
+		return remove_nops(tmp);
+	}
+	case Loop:
+		instruction->loop_instruction =
+			remove_nops(instruction->loop_instruction);
+	default:
 		instruction->next_instruction =
-			instruction->next_instruction->next_instruction;
-		free(tmp);
+			remove_nops(instruction->next_instruction);
+		return instruction;
 	}
-	if (instruction->type == Loop) {
-		while (instruction->loop_instruction != NULL &&
-		       instruction->loop_instruction->type == Nop) {
-			Instruction *tmp = instruction->loop_instruction;
-			instruction->loop_instruction =
-				instruction->loop_instruction->next_instruction;
-			free(tmp);
-		}
-		remove_nops_ins(instruction->loop_instruction);
-	}
-	remove_nops_ins(instruction->next_instruction);
-}
-
-void remove_nops()
-{
-	while (program->type == Nop && program->next_instruction != NULL) {
-		Instruction *tmp = program;
-		program = program->next_instruction;
-		free(tmp);
-	}
-	remove_nops_ins(program);
 }
 
 void optimize()
 {
-	remove_nops();
+	program = remove_nops(program);
 }
 
 void run_program()
