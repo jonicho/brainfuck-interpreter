@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-char data[2048];
+char *data;
+int data_size = 1;
 int data_ptr = 0;
 FILE *program_file;
 
@@ -103,6 +104,18 @@ Instruction *parse_program()
 	return first_inst;
 }
 
+void increase_data_array_size(int min_required_index)
+{
+	int old_size = data_size;
+	while (data_size < min_required_index + 1) {
+		data_size *= 2;
+	}
+	data = realloc(data, data_size * sizeof(data[0]));
+	for (size_t i = old_size; i < data_size; i++) {
+		data[i] = 0;
+	}
+}
+
 void run_instruction(Instruction *instruction)
 {
 	while (instruction != NULL) {
@@ -137,6 +150,9 @@ void run_instruction(Instruction *instruction)
 			break;
 		default:
 			break;
+		}
+		if (data_ptr >= data_size) {
+			increase_data_array_size(data_ptr);
 		}
 		instruction = instruction->next;
 	}
@@ -200,9 +216,10 @@ void main(int argc, char const *argv[])
 	}
 	program = parse_program();
 	fclose(program_file);
-	for (int i = 0; i < sizeof data; i++) {
+	optimize();
+	data = malloc(data_size * sizeof(data[0]));
+	for (int i = 0; i < data_size; i++) {
 		data[i] = 0;
 	}
-	optimize();
 	run_instruction(program);
 }
