@@ -2,8 +2,8 @@
 #include <stdio.h>
 
 char *data;
-int data_size = 1;
-int data_ptr = 0;
+size_t data_size = 1;
+size_t data_ptr = 0;
 FILE *program_file;
 
 enum InstructionType {
@@ -104,9 +104,9 @@ Instruction *parse_program()
 	return first_inst;
 }
 
-void increase_data_array_size(int min_required_index)
+void increase_data_array_size(size_t min_required_index)
 {
-	int old_size = data_size;
+	size_t old_size = data_size;
 	while (data_size < min_required_index + 1) {
 		data_size *= 2;
 	}
