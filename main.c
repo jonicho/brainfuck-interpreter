@@ -164,10 +164,39 @@ Instruction *optimize_clear_loops(Instruction *instruction)
 	return instruction;
 }
 
+void optimize_adjacent_instructions(Instruction *instruction)
+{
+	if (instruction == NULL) {
+		return;
+	}
+	switch (instruction->type) {
+	case Left:
+	case Right:
+	case Add:
+	case Subtract:
+		while (instruction->next != NULL &&
+		       instruction->next->type == instruction->type &&
+		       instruction->next->offset == instruction->offset) {
+			Instruction *tmp = instruction->next;
+			instruction->next = tmp->next;
+			instruction->value += tmp->value;
+			free(tmp);
+		}
+		break;
+	case Loop:
+		optimize_adjacent_instructions(instruction->loop);
+		break;
+	default:
+		break;
+	}
+	optimize_adjacent_instructions(instruction->next);
+}
+
 void optimize()
 {
 	program = remove_nops(program);
 	program = optimize_clear_loops(program);
+	optimize_adjacent_instructions(program);
 }
 
 void main(int argc, char const *argv[])
