@@ -21,6 +21,7 @@ enum InstructionType {
 typedef struct Instruction {
 	enum InstructionType type;
 	int value;
+	int offset;
 	struct Instruction *next;
 	struct Instruction *loop;
 } Instruction;
@@ -97,16 +98,34 @@ void run_instruction(Instruction *instruction)
 			data_ptr += instruction->value;
 			break;
 		case Add:
-			data[data_ptr] += instruction->value;
+			if (data_ptr + instruction->offset >= data_size) {
+				increase_data_array_size(data_ptr +
+							 instruction->offset);
+			}
+			data[data_ptr + instruction->offset] +=
+				instruction->value;
 			break;
 		case Subtract:
-			data[data_ptr] -= instruction->value;
+			if (data_ptr + instruction->offset >= data_size) {
+				increase_data_array_size(data_ptr +
+							 instruction->offset);
+			}
+			data[data_ptr + instruction->offset] -=
+				instruction->value;
 			break;
 		case Print:
-			putchar(data[data_ptr]);
+			if (data_ptr + instruction->offset >= data_size) {
+				increase_data_array_size(data_ptr +
+							 instruction->offset);
+			}
+			putchar(data[data_ptr + instruction->offset]);
 			break;
 		case Read:
-			data[data_ptr] = getchar();
+			if (data_ptr + instruction->offset >= data_size) {
+				increase_data_array_size(data_ptr +
+							 instruction->offset);
+			}
+			data[data_ptr + instruction->offset] = getchar();
 			break;
 		case Loop:
 			while (data[data_ptr]) {
@@ -114,7 +133,11 @@ void run_instruction(Instruction *instruction)
 			}
 			break;
 		case Clear:
-			data[data_ptr] = 0;
+			if (data_ptr + instruction->offset >= data_size) {
+				increase_data_array_size(data_ptr +
+							 instruction->offset);
+			}
+			data[data_ptr + instruction->offset] = 0;
 			break;
 		default:
 			break;
@@ -192,11 +215,59 @@ void optimize_adjacent_instructions(Instruction *instruction)
 	optimize_adjacent_instructions(instruction->next);
 }
 
+Instruction *optimize_offsets(Instruction *instruction)
+{
+	if (instruction == NULL) {
+		return NULL;
+	}
+	Instruction *current_inst = instruction;
+	int offset = 0;
+	while (current_inst != NULL && current_inst->type != Loop) {
+		switch (current_inst->type) {
+		case Left:
+			offset -= current_inst->value;
+			current_inst->type = Nop;
+			break;
+		case Right:
+			offset += current_inst->value;
+			current_inst->type = Nop;
+			break;
+		default:
+			current_inst->offset = offset;
+			break;
+		}
+		if (current_inst->next == NULL ||
+		    current_inst->next->type == Loop) {
+			break;
+		}
+		current_inst = current_inst->next;
+	}
+	if (offset != 0) {
+		Instruction *tmp = current_inst;
+		current_inst = malloc(sizeof(Instruction));
+		current_inst->type = offset < 0 ? Left : Right;
+		current_inst->value = abs(offset);
+		current_inst->next = tmp->next;
+		tmp->next = current_inst;
+	}
+	if (current_inst != NULL) {
+		if (current_inst->type == Loop) {
+			current_inst->loop =
+				optimize_offsets(current_inst->loop);
+		}
+		current_inst->next = optimize_offsets(current_inst->next);
+	}
+	return instruction;
+}
+
 void optimize()
 {
 	program = remove_nops(program);
 	program = optimize_clear_loops(program);
 	optimize_adjacent_instructions(program);
+	program = optimize_offsets(program);
+	// optimize_offsets generated nops; those must be removed
+	program = remove_nops(program);
 }
 
 void main(int argc, char const *argv[])
