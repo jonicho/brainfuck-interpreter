@@ -6,17 +6,7 @@ size_t data_size = 1;
 size_t data_ptr = 0;
 FILE *program_file;
 
-enum InstructionType {
-	Nop,
-	Left,
-	Right,
-	Add,
-	Subtract,
-	Print,
-	Read,
-	Loop,
-	Clear
-};
+enum InstructionType { Nop, Move, Add, Print, Read, Loop, Clear };
 
 typedef struct Instruction {
 	enum InstructionType type;
@@ -40,16 +30,14 @@ Instruction *parse_program()
 		next_inst->value = 1;
 		switch (c) {
 		case '<':
-			next_inst->type = Left;
-			break;
+			next_inst->value = -1;
 		case '>':
-			next_inst->type = Right;
-			break;
-		case '+':
-			next_inst->type = Add;
+			next_inst->type = Move;
 			break;
 		case '-':
-			next_inst->type = Subtract;
+			next_inst->value = -1;
+		case '+':
+			next_inst->type = Add;
 			break;
 		case '.':
 			next_inst->type = Print;
@@ -91,10 +79,7 @@ void run_instruction(Instruction *instruction)
 		switch (instruction->type) {
 		case Nop:
 			break;
-		case Left:
-			data_ptr -= instruction->value;
-			break;
-		case Right:
+		case Move:
 			data_ptr += instruction->value;
 			break;
 		case Add:
@@ -103,14 +88,6 @@ void run_instruction(Instruction *instruction)
 							 instruction->offset);
 			}
 			data[data_ptr + instruction->offset] +=
-				instruction->value;
-			break;
-		case Subtract:
-			if (data_ptr + instruction->offset >= data_size) {
-				increase_data_array_size(data_ptr +
-							 instruction->offset);
-			}
-			data[data_ptr + instruction->offset] -=
 				instruction->value;
 			break;
 		case Print:
@@ -174,9 +151,7 @@ Instruction *optimize_clear_loops(Instruction *instruction)
 		return NULL;
 	}
 	if (instruction->type == Loop && instruction->loop != NULL &&
-	    (instruction->loop->type == Add ||
-	     instruction->loop->type == Subtract) &&
-	    instruction->loop->next == NULL) {
+	    instruction->loop->type == Add && instruction->loop->next == NULL) {
 		instruction->type = Clear;
 		free(instruction->loop);
 	}
@@ -193,10 +168,8 @@ void optimize_adjacent_instructions(Instruction *instruction)
 		return;
 	}
 	switch (instruction->type) {
-	case Left:
-	case Right:
+	case Move:
 	case Add:
-	case Subtract:
 		while (instruction->next != NULL &&
 		       instruction->next->type == instruction->type &&
 		       instruction->next->offset == instruction->offset) {
@@ -224,11 +197,7 @@ Instruction *optimize_offsets(Instruction *instruction)
 	int offset = 0;
 	while (current_inst != NULL && current_inst->type != Loop) {
 		switch (current_inst->type) {
-		case Left:
-			offset -= current_inst->value;
-			current_inst->type = Nop;
-			break;
-		case Right:
+		case Move:
 			offset += current_inst->value;
 			current_inst->type = Nop;
 			break;
@@ -245,8 +214,8 @@ Instruction *optimize_offsets(Instruction *instruction)
 	if (offset != 0) {
 		Instruction *tmp = current_inst;
 		current_inst = malloc(sizeof(Instruction));
-		current_inst->type = offset < 0 ? Left : Right;
-		current_inst->value = abs(offset);
+		current_inst->type = Move;
+		current_inst->value = offset;
 		current_inst->next = tmp->next;
 		tmp->next = current_inst;
 	}
