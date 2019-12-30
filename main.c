@@ -27,63 +27,28 @@ typedef struct Instruction {
 
 Instruction *program;
 
-int nextc()
-{
-	int c;
-	do {
-		c = fgetc(program_file);
-	} while (c != '>' && c != '<' && c != '+' && c != '-' && c != '[' &&
-		 c != ']' && c != '.' && c != ',' && c != EOF);
-	return c;
-}
-
 Instruction *parse_program()
 {
 	Instruction *first_inst = malloc(sizeof(Instruction));
 	first_inst->type = Nop;
 	Instruction *current_inst = first_inst;
-	int value;
 	int c;
-	while (!feof(program_file)) {
-		c = nextc();
-		if (c == ']') {
-			current_inst->next = NULL;
-			return first_inst;
-		}
+	while (current_inst != NULL && (c = fgetc(program_file)) != EOF) {
 		Instruction *next_inst = malloc(sizeof(Instruction));
-		value = 1;
+		next_inst->offset = 0;
+		next_inst->value = 1;
 		switch (c) {
 		case '<':
-			while (nextc() == '<') {
-				value++;
-			}
-			fseek(program_file, -1L, SEEK_CUR);
 			next_inst->type = Left;
-			next_inst->value = value;
 			break;
 		case '>':
-			while (nextc() == '>') {
-				value++;
-			}
-			fseek(program_file, -1L, SEEK_CUR);
 			next_inst->type = Right;
-			next_inst->value = value;
 			break;
 		case '+':
-			while (nextc() == '+') {
-				value++;
-			}
-			fseek(program_file, -1L, SEEK_CUR);
 			next_inst->type = Add;
-			next_inst->value = value;
 			break;
 		case '-':
-			while (nextc() == '-') {
-				value++;
-			}
-			fseek(program_file, -1L, SEEK_CUR);
 			next_inst->type = Subtract;
-			next_inst->value = value;
 			break;
 		case '.':
 			next_inst->type = Print;
@@ -94,6 +59,9 @@ Instruction *parse_program()
 		case '[':
 			next_inst->type = Loop;
 			next_inst->loop = parse_program();
+			break;
+		case ']':
+			next_inst = NULL;
 			break;
 		default:
 			break;
