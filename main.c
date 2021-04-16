@@ -31,11 +31,13 @@ Instruction *parse_program()
 		switch (c) {
 		case '<':
 			next_inst->value = -1;
+			// fallthrough
 		case '>':
 			next_inst->type = Move;
 			break;
 		case '-':
 			next_inst->value = -1;
+			// fallthrough
 		case '+':
 			next_inst->type = Add;
 			break;
@@ -139,6 +141,7 @@ Instruction *remove_nops(Instruction *instruction)
 	}
 	case Loop:
 		instruction->loop = remove_nops(instruction->loop);
+		// fallthrough
 	default:
 		instruction->next = remove_nops(instruction->next);
 		return instruction;
@@ -239,7 +242,7 @@ void optimize()
 	program = remove_nops(program);
 }
 
-void main(int argc, char const *argv[])
+int main(int argc, char const *argv[])
 {
 	if (argc < 2) {
 		printf("Usage: %s file\n", argv[0]);
@@ -255,7 +258,7 @@ void main(int argc, char const *argv[])
 	fclose(program_file);
 	optimize();
 	data = malloc(data_size * sizeof(data[0]));
-	for (int i = 0; i < data_size; i++) {
+	for (size_t i = 0; i < data_size; i++) {
 		data[i] = 0;
 	}
 	run_instruction(program);
