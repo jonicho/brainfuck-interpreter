@@ -2,10 +2,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-uint8_t *data;
-uint16_t data_ptr = 0;
-FILE *program_file;
-
 enum InstructionType { Nop, Move, Add, Print, Read, Loop, Clear };
 
 typedef struct Instruction {
@@ -16,9 +12,7 @@ typedef struct Instruction {
 	struct Instruction *loop;
 } Instruction;
 
-Instruction *program;
-
-Instruction *parse_program()
+Instruction *parse_program(FILE *program_file)
 {
 	Instruction *first_inst = malloc(sizeof(Instruction));
 	first_inst->type = Nop;
@@ -49,7 +43,7 @@ Instruction *parse_program()
 			break;
 		case '[':
 			next_inst->type = Loop;
-			next_inst->loop = parse_program();
+			next_inst->loop = parse_program(program_file);
 			break;
 		case ']':
 			next_inst = NULL;
@@ -63,32 +57,34 @@ Instruction *parse_program()
 	return first_inst;
 }
 
-void run_instruction(Instruction *instruction)
+void run_instruction(Instruction *instruction, uint8_t *data,
+		     uint16_t *data_ptr)
 {
 	while (instruction != NULL) {
 		switch (instruction->type) {
 		case Nop:
 			break;
 		case Move:
-			data_ptr += instruction->value;
+			*data_ptr += instruction->value;
 			break;
 		case Add:
-			data[data_ptr + instruction->offset] +=
+			data[*data_ptr + instruction->offset] +=
 				instruction->value;
 			break;
 		case Print:
-			putchar(data[data_ptr + instruction->offset]);
+			putchar(data[*data_ptr + instruction->offset]);
 			break;
 		case Read:
-			data[data_ptr + instruction->offset] = getchar();
+			data[*data_ptr + instruction->offset] = getchar();
 			break;
 		case Loop:
-			while (data[data_ptr]) {
-				run_instruction(instruction->loop);
+			while (data[*data_ptr]) {
+				run_instruction(instruction->loop, data,
+						data_ptr);
 			}
 			break;
 		case Clear:
-			data[data_ptr + instruction->offset] = 0;
+			data[*data_ptr + instruction->offset] = 0;
 			break;
 		default:
 			break;
@@ -201,7 +197,7 @@ Instruction *optimize_offsets(Instruction *instruction)
 	return instruction;
 }
 
-void optimize()
+Instruction *optimize_program(Instruction *program)
 {
 	program = remove_nops(program);
 	program = optimize_clear_loops(program);
@@ -209,6 +205,7 @@ void optimize()
 	program = optimize_offsets(program);
 	// optimize_offsets generated nops; those must be removed
 	program = remove_nops(program);
+	return program;
 }
 
 int main(int argc, char const *argv[])
@@ -218,17 +215,19 @@ int main(int argc, char const *argv[])
 		exit(0);
 	}
 
-	program_file = fopen(argv[1], "r");
+	FILE *program_file = fopen(argv[1], "r");
 	if (program_file == NULL) {
 		printf("Failed to open file!\n");
 		exit(EXIT_FAILURE);
 	}
-	program = parse_program();
+
+	Instruction *program = parse_program(program_file);
 	fclose(program_file);
-	optimize();
-	data = malloc((UINT16_MAX + 1) * sizeof(data[0]));
+	program = optimize_program(program);
+	uint8_t *data = malloc((UINT16_MAX + 1) * sizeof(data[0]));
+	uint16_t data_ptr = 0;
 	for (uint32_t i = 0; i < UINT16_MAX + 1; i++) {
 		data[i] = 0;
 	}
-	run_instruction(program);
+	run_instruction(program, data, &data_ptr);
 }
