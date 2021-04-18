@@ -1,17 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
-char *data;
-size_t data_size = 1;
-size_t data_ptr = 0;
+uint8_t *data;
+uint16_t data_ptr = 0;
 FILE *program_file;
 
 enum InstructionType { Nop, Move, Add, Print, Read, Loop, Clear };
 
 typedef struct Instruction {
 	enum InstructionType type;
-	int value;
-	int offset;
+	int32_t value;
+	int32_t offset;
 	struct Instruction *next;
 	struct Instruction *loop;
 } Instruction;
@@ -63,18 +63,6 @@ Instruction *parse_program()
 	return first_inst;
 }
 
-void increase_data_array_size(size_t min_required_index)
-{
-	size_t old_size = data_size;
-	while (data_size < min_required_index + 1) {
-		data_size *= 2;
-	}
-	data = realloc(data, data_size * sizeof(data[0]));
-	for (size_t i = old_size; i < data_size; i++) {
-		data[i] = 0;
-	}
-}
-
 void run_instruction(Instruction *instruction)
 {
 	while (instruction != NULL) {
@@ -85,25 +73,13 @@ void run_instruction(Instruction *instruction)
 			data_ptr += instruction->value;
 			break;
 		case Add:
-			if (data_ptr + instruction->offset >= data_size) {
-				increase_data_array_size(data_ptr +
-							 instruction->offset);
-			}
 			data[data_ptr + instruction->offset] +=
 				instruction->value;
 			break;
 		case Print:
-			if (data_ptr + instruction->offset >= data_size) {
-				increase_data_array_size(data_ptr +
-							 instruction->offset);
-			}
 			putchar(data[data_ptr + instruction->offset]);
 			break;
 		case Read:
-			if (data_ptr + instruction->offset >= data_size) {
-				increase_data_array_size(data_ptr +
-							 instruction->offset);
-			}
 			data[data_ptr + instruction->offset] = getchar();
 			break;
 		case Loop:
@@ -112,17 +88,10 @@ void run_instruction(Instruction *instruction)
 			}
 			break;
 		case Clear:
-			if (data_ptr + instruction->offset >= data_size) {
-				increase_data_array_size(data_ptr +
-							 instruction->offset);
-			}
 			data[data_ptr + instruction->offset] = 0;
 			break;
 		default:
 			break;
-		}
-		if (data_ptr >= data_size) {
-			increase_data_array_size(data_ptr);
 		}
 		instruction = instruction->next;
 	}
@@ -257,8 +226,8 @@ int main(int argc, char const *argv[])
 	program = parse_program();
 	fclose(program_file);
 	optimize();
-	data = malloc(data_size * sizeof(data[0]));
-	for (size_t i = 0; i < data_size; i++) {
+	data = malloc((UINT16_MAX + 1) * sizeof(data[0]));
+	for (uint32_t i = 0; i < UINT16_MAX + 1; i++) {
 		data[i] = 0;
 	}
 	run_instruction(program);
