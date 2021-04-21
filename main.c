@@ -6,8 +6,8 @@ enum InstructionType { Nop, Move, Add, Print, Read, Loop, Clear };
 
 typedef struct Instruction {
 	enum InstructionType type;
-	int32_t value;
-	int32_t offset;
+	int16_t value;
+	int16_t offset;
 	struct Instruction *next;
 	struct Instruction *loop;
 } Instruction;
